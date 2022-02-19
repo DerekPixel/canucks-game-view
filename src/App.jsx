@@ -3,66 +3,76 @@ import './App.css';
 
 function App() {
 
-  const [NHLSchedule, setNHLSchedule] = useState();
+  const [NHLSchedule, setNHLSchedule] = useState(null);
   const [games, setGames] = useState([]);
+  const [mappedGames, setMappedGames] = useState(null);
 
   const proxy = 'https://statsapi.web.nhl.com';
 
   useEffect(() => {
-    fetch('https://statsapi.web.nhl.com/api/v1/schedule')
-    .then(res => res.json())
-    .then(
-      (results) => {
-        // console.log(results.dates);
-        setNHLSchedule(results.dates);
-      },
-
-      (error) => {
-        console.log(error);
-      }
-    )
-  }, [])
+    fetchNewData();
+  }, []);
 
   useEffect(() => {
+    if(NHLSchedule === null) return;
 
-  if(NHLSchedule !== undefined) {
+    // console.log('hello', NHLSchedule);
+    setGames(NHLSchedule.dates[0].games);
+  }, [NHLSchedule])
 
-    Promise.all(
-      NHLSchedule[0].games.map((gameObj, i) => {
+  useEffect(() => {
+    if(games.length === 0) return;
 
-        return (
-          fetch(`${proxy}${gameObj.teams.home.team.link}`)
-          .then(res => res.json())
-          .then(
-            (results => {
-              return (
-                <div
-                  key={i}
-                >
-                  {results.teams[0].abbreviation}
-                </div>
-              )
-            }),
-      
-            (error) => {
-              console.log(error);
-            }
-          )
-        )
+    setMappedGames(mapGames());
+    // console.log(mapGames());
+  }, [games])
   
-      })
-    ).then(value => {
-      setGames(value)
+
+  async function fetchNewData() {
+    try {
+      let nhlDataPromise = await makeRequestForNhlDataReturnPromise();
+      console.log('Got the NHL Data Promise!', nhlDataPromise);
+      let nhlDataJson = await processNhlData(nhlDataPromise);
+      console.log('Got the Data Json', nhlDataJson);
+      setNHLSchedule(nhlDataJson);
+      // setGames(nhlDataJson.dates[0].games);
+      
+    } catch(error) {
+      console.log(error)
+    }
+  } 
+
+  function makeRequestForNhlDataReturnPromise() {
+    return fetch('https://statsapi.web.nhl.com/api/v1/schedule');
+  }
+
+  function processNhlData(nhlData) {
+    return nhlData.json();
+  }
+
+  function mapGames() {
+      return games.map((gameObj, index, array) => {
+        return (
+        <div
+          key={index}
+        >
+          <div className="home">
+            <h1>{gameObj.teams.home.team.name}</h1>
+          </div>
+          <div className="away">
+            <h1>{gameObj.teams.away.team.name}</h1>
+          </div>
+        </div>          
+        )
+
     })
   }
 
-  }, [NHLSchedule])
-
-
-
   return (
     <div className="App">
-      {games}
+      {
+        mappedGames
+      }
     </div>
   );
 }
